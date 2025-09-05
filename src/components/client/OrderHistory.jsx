@@ -1,9 +1,10 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/components/ui/use-toast';
 import { ArrowLeft, Clock, MapPin, Star } from 'lucide-react';
@@ -11,12 +12,17 @@ import { ArrowLeft, Clock, MapPin, Star } from 'lucide-react';
 const OrderHistory = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { orders } = useData();
+  const { orders, businesses } = useData();
   const { toast } = useToast();
 
   const userOrders = orders
-    .filter(order => order.clientId === user?.id)
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    .filter(order => order.client_id === user?.id)
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+  const getBusinessName = (businessId) => {
+    const business = businesses.find(b => b.id === businessId);
+    return business ? business.name : 'Negocio Desconocido';
+  };
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -46,7 +52,6 @@ const OrderHistory = () => {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -95,16 +100,16 @@ const OrderHistory = () => {
                   <div className="flex justify-between items-start">
                     <div>
                       <CardTitle className="text-white">
-                        Pedido #{order.id}
+                        Pedido a {getBusinessName(order.business_id)}
                       </CardTitle>
-                      <p className="text-white/70">{order.businessName}</p>
+                      <p className="text-white/70 text-sm">ID: {order.id.substring(0, 8)}</p>
                     </div>
                     <div className="text-right">
                       <div className={`inline-flex items-center px-3 py-1 rounded-full text-white text-sm font-medium ${getStatusColor(order.status)}`}>
                         {getStatusText(order.status)}
                       </div>
                       <p className="text-white/70 text-sm mt-1">
-                        {new Date(order.createdAt).toLocaleDateString('es-ES', {
+                        {new Date(order.created_at).toLocaleDateString('es-ES', {
                           day: 'numeric',
                           month: 'short',
                           hour: '2-digit',
@@ -116,10 +121,9 @@ const OrderHistory = () => {
                 </CardHeader>
                 
                 <CardContent className="space-y-4">
-                  {/* Order Items */}
                   <div className="space-y-2">
-                    {order.items.map((item) => (
-                      <div key={item.id} className="flex justify-between items-center text-sm">
+                    {order.items.map((item, idx) => (
+                      <div key={idx} className="flex justify-between items-center text-sm">
                         <span className="text-white/70">
                           {item.quantity}x {item.name}
                         </span>
@@ -130,26 +134,20 @@ const OrderHistory = () => {
                     ))}
                   </div>
 
-                  {/* Order Info */}
                   <div className="flex items-center justify-between pt-4 border-t border-white/20">
                     <div className="flex items-center gap-4 text-sm text-white/70">
                       <div className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
-                        <span>{order.estimatedTime}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
                         <MapPin className="w-4 h-4" />
-                        <span>{order.deliveryAddress.street}</span>
+                        <span>{order.delivery_address.street}</span>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className="text-xl font-bold text-white">
-                        ${order.total.toFixed(2)}
+                        ${order.total_price.toFixed(2)}
                       </p>
                     </div>
                   </div>
 
-                  {/* Actions */}
                   <div className="flex gap-2 pt-2">
                     {(order.status === 'delivering' || order.status === 'ready') && (
                       <Button
@@ -166,7 +164,6 @@ const OrderHistory = () => {
                         variant="outline"
                         className="border-white/20 text-white hover:bg-white/10"
                         onClick={() => {
-                          // Implementar calificación
                           toast({
                             title: "🚧 Esta función no está implementada aún—¡pero no te preocupes! Puedes solicitarla en tu próximo prompt! 🚀"
                           });
@@ -180,7 +177,7 @@ const OrderHistory = () => {
                       size="sm"
                       variant="outline"
                       className="border-white/20 text-white hover:bg-white/10"
-                      onClick={() => navigate(`/cliente/negocio/${order.businessId}`)}
+                      onClick={() => navigate(`/cliente/negocio/${order.business_id}`)}
                     >
                       Pedir de nuevo
                     </Button>

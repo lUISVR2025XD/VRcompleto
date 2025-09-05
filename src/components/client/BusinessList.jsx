@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -16,14 +17,13 @@ const BusinessList = () => {
 
   const filteredBusinesses = businesses.filter(business => {
     const matchesSearch = business.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         business.category.toLowerCase().includes(searchTerm.toLowerCase());
+                         (business.category && business.category.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory = selectedCategory === 'all' || business.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
   return (
     <div className="space-y-8">
-      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -37,7 +37,6 @@ const BusinessList = () => {
         </p>
       </motion.div>
 
-      {/* Search and Filters */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -75,7 +74,6 @@ const BusinessList = () => {
         </div>
       </motion.div>
 
-      {/* Business Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredBusinesses.map((business, index) => (
           <motion.div
@@ -87,10 +85,10 @@ const BusinessList = () => {
             <Card className="glass-card border-0 overflow-hidden hover:scale-105 transition-all duration-300 group">
               <Link to={`/cliente/negocio/${business.id}`}>
                 <div className="relative">
-                  <img  alt={business.name} className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-300" src="https://images.unsplash.com/photo-1697256200022-f61abccad430" />
+                  <img  alt={business.name} className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-300" src="https://images.unsplash.com/photo-1644981900009-e54566bb4c34" />
                   <div className="absolute top-4 right-4">
-                    <div className={`px-2 py-1 rounded-full text-xs font-medium ${business.isOpen ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
-                      {business.isOpen ? 'Abierto' : 'Cerrado'}
+                    <div className={`px-2 py-1 rounded-full text-xs font-medium ${business.is_open ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
+                      {business.is_open ? 'Abierto' : 'Cerrado'}
                     </div>
                   </div>
                 </div>
@@ -109,8 +107,8 @@ const BusinessList = () => {
                   <p className="text-white/70 mb-4">{business.category}</p>
                   
                   <div className="flex items-center justify-between text-sm text-white/60">
-                    <div className="flex items-center gap-1"><Clock className="w-4 h-4" /><span>{business.deliveryTime}</span></div>
-                    <div className="flex items-center gap-1"><MapPin className="w-4 h-4" /><span>${business.deliveryFee} envío</span></div>
+                    <div className="flex items-center gap-1"><Clock className="w-4 h-4" /><span>{business.delivery_time}</span></div>
+                    <div className="flex items-center gap-1"><MapPin className="w-4 h-4" /><span>${business.delivery_fee} envío</span></div>
                   </div>
                 </CardContent>
               </Link>

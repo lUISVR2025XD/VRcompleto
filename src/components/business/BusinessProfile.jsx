@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/components/ui/use-toast';
 import { Save, Store, MapPin, Phone, Clock, DollarSign, Upload, FileText, Trash2, Eye } from 'lucide-react';
@@ -14,24 +14,40 @@ const BusinessProfile = () => {
   const { businesses, updateBusiness } = useData();
   const { toast } = useToast();
   
-  const business = businesses.find(b => b.id === user?.businessId) || businesses[0];
+  const business = businesses.find(b => b.id === user?.id);
   
   const [profile, setProfile] = useState({
-    name: business?.name || '',
-    category: business?.category || '',
-    phone: business?.phone || '',
-    address: business?.address || '',
-    deliveryTime: business?.deliveryTime || '',
-    deliveryFee: business?.deliveryFee || '',
-    image: business?.image || ''
+    name: '',
+    category: '',
+    phone: '',
+    address: '',
+    delivery_time: '',
+    delivery_fee: '',
+    image: ''
   });
+  const [promoFiles, setPromoFiles] = useState([]);
 
-  const [promoFiles, setPromoFiles] = useState(business?.promotions || []);
+  useEffect(() => {
+    if (business) {
+      setProfile({
+        name: business.name || '',
+        category: business.category || '',
+        phone: business.phone || '',
+        address: business.address || '',
+        delivery_time: business.delivery_time || '',
+        delivery_fee: business.delivery_fee || '',
+        image: business.image || ''
+      });
+      setPromoFiles(business.promotions || []);
+    }
+  }, [business]);
 
   const handleSave = () => {
+    if (!business) return;
+    
     const updatedData = {
       ...profile,
-      deliveryFee: parseFloat(profile.deliveryFee) || 0,
+      delivery_fee: parseFloat(profile.delivery_fee) || 0,
       promotions: promoFiles
     };
     
@@ -76,6 +92,9 @@ const BusinessProfile = () => {
     setPromoFiles(newFiles);
   };
 
+  if (!business) {
+    return <div className="text-white text-center">Cargando datos del negocio...</div>;
+  }
 
   return (
     <div className="space-y-8">
@@ -110,8 +129,8 @@ const BusinessProfile = () => {
                     <Input id="phone" value={profile.phone} onChange={(e) => setProfile({ ...profile, phone: e.target.value })} placeholder="+52 123 456 7890" className="bg-white/10 border-white/20 text-white placeholder:text-white/50" />
                   </div>
                   <div>
-                    <Label htmlFor="deliveryTime" className="text-white">Tiempo de entrega</Label>
-                    <Input id="deliveryTime" value={profile.deliveryTime} onChange={(e) => setProfile({ ...profile, deliveryTime: e.target.value })} placeholder="Ej: 25-35 min" className="bg-white/10 border-white/20 text-white placeholder:text-white/50" />
+                    <Label htmlFor="delivery_time" className="text-white">Tiempo de entrega</Label>
+                    <Input id="delivery_time" value={profile.delivery_time} onChange={(e) => setProfile({ ...profile, delivery_time: e.target.value })} placeholder="Ej: 25-35 min" className="bg-white/10 border-white/20 text-white placeholder:text-white/50" />
                   </div>
                 </div>
                 <div>
@@ -120,8 +139,8 @@ const BusinessProfile = () => {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="deliveryFee" className="text-white">Costo de envío ($)</Label>
-                    <Input id="deliveryFee" type="number" step="0.01" value={profile.deliveryFee} onChange={(e) => setProfile({ ...profile, deliveryFee: e.target.value })} placeholder="0.00" className="bg-white/10 border-white/20 text-white placeholder:text-white/50" />
+                    <Label htmlFor="delivery_fee" className="text-white">Costo de envío ($)</Label>
+                    <Input id="delivery_fee" type="number" step="0.01" value={profile.delivery_fee} onChange={(e) => setProfile({ ...profile, delivery_fee: e.target.value })} placeholder="0.00" className="bg-white/10 border-white/20 text-white placeholder:text-white/50" />
                   </div>
                   <div>
                     <Label htmlFor="image" className="text-white">URL de imagen de portada</Label>
@@ -178,15 +197,15 @@ const BusinessProfile = () => {
           <Card className="glass-card border-0">
             <CardContent className="p-6">
               <div className="text-center mb-4">
-                <img  alt={business?.name} className="w-full h-32 object-cover rounded-lg mb-4" src="https://images.unsplash.com/photo-1694388001616-1176f534d72f" />
-                <h3 className="text-xl font-bold text-white mb-2">{business?.name}</h3>
-                <p className="text-white/70">{business?.category}</p>
+                <img  alt={business.name} className="w-full h-32 object-cover rounded-lg mb-4" src={business.image || "https://images.unsplash.com/photo-1694388001616-1176f534d72f"} />
+                <h3 className="text-xl font-bold text-white mb-2">{business.name}</h3>
+                <p className="text-white/70">{business.category}</p>
               </div>
               <div className="space-y-3">
-                <div className="flex items-center gap-2 text-white/70"><MapPin className="w-4 h-4" /><span className="text-sm">{business?.address || 'Sin dirección'}</span></div>
-                <div className="flex items-center gap-2 text-white/70"><Phone className="w-4 h-4" /><span className="text-sm">{business?.phone || 'Sin teléfono'}</span></div>
-                <div className="flex items-center gap-2 text-white/70"><Clock className="w-4 h-4" /><span className="text-sm">{business?.deliveryTime || 'Sin tiempo'}</span></div>
-                <div className="flex items-center gap-2 text-white/70"><DollarSign className="w-4 h-4" /><span className="text-sm">${business?.deliveryFee || 0} envío</span></div>
+                <div className="flex items-center gap-2 text-white/70"><MapPin className="w-4 h-4" /><span className="text-sm">{business.address || 'Sin dirección'}</span></div>
+                <div className="flex items-center gap-2 text-white/70"><Phone className="w-4 h-4" /><span className="text-sm">{business.phone || 'Sin teléfono'}</span></div>
+                <div className="flex items-center gap-2 text-white/70"><Clock className="w-4 h-4" /><span className="text-sm">{business.delivery_time || 'Sin tiempo'}</span></div>
+                <div className="flex items-center gap-2 text-white/70"><DollarSign className="w-4 h-4" /><span className="text-sm">${business.delivery_fee || 0} envío</span></div>
               </div>
             </CardContent>
           </Card>
@@ -197,16 +216,16 @@ const BusinessProfile = () => {
               <div className="flex items-center justify-between">
                 <span className="text-white/70">Estado</span>
                 <div className="flex items-center gap-2">
-                  <div className={`w-3 h-3 rounded-full ${business?.isOpen ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                  <span className="text-white font-medium">{business?.isOpen ? 'Abierto' : 'Cerrado'}</span>
+                  <div className={`w-3 h-3 rounded-full ${business.is_open ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                  <span className="text-white font-medium">{business.is_open ? 'Abierto' : 'Cerrado'}</span>
                 </div>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-white/70">Calificación</span>
-                <span className="text-white font-bold">⭐ {business?.rating}</span>
+                <span className="text-white font-bold">⭐ {business.rating}</span>
               </div>
-              <Button variant="outline" size="sm" className="w-full border-white/20 text-white hover:bg-white/10" onClick={() => toast({ title: "🚧 ¡Función no implementada!" })}>
-                {business?.isOpen ? 'Cerrar negocio' : 'Abrir negocio'}
+              <Button variant="outline" size="sm" className="w-full border-white/20 text-white hover:bg-white/10" onClick={() => updateBusiness(business.id, { is_open: !business.is_open })}>
+                {business.is_open ? 'Cerrar negocio' : 'Abrir negocio'}
               </Button>
             </CardContent>
           </Card>

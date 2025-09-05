@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -47,7 +46,7 @@ const BusinessLayout = ({ children }) => {
   };
 
   const userName = user?.user_metadata?.name || user?.email;
-  const userAvatar = user?.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${userName}&background=random`;
+  const userAvatar = user?.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=random`;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-900 via-teal-900 to-blue-900">

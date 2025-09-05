@@ -1,8 +1,9 @@
+
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/components/ui/use-toast';
 import { MapPin, Phone, CheckCircle, Navigation } from 'lucide-react';
@@ -12,19 +13,18 @@ const ActiveDeliveries = () => {
   const { orders, updateOrder, deliveryPersons, updateDeliveryPerson, clients } = useData();
   const { toast } = useToast();
 
-  const deliveryPerson = deliveryPersons.find(d => d.id === user?.deliveryId) || deliveryPersons[0];
+  const deliveryPerson = deliveryPersons.find(d => d.id === user?.id);
   const activeDeliveries = orders.filter(order => 
-    order.deliveryPersonId === deliveryPerson?.id && 
+    order.delivery_person_id === deliveryPerson?.id && 
     order.status === 'delivering'
   );
 
   const handleCompleteDelivery = (order) => {
     updateOrder(order.id, { status: 'delivered' });
     
-    // Update delivery person stats
-    const commission = order.total * 0.15;
+    const commission = order.total_price * 0.15;
     updateDeliveryPerson(deliveryPerson.id, {
-      totalDeliveries: (deliveryPerson.totalDeliveries || 0) + 1,
+      total_deliveries: (deliveryPerson.total_deliveries || 0) + 1,
       earnings: (deliveryPerson.earnings || 0) + commission
     });
 
@@ -35,7 +35,7 @@ const ActiveDeliveries = () => {
   };
 
   const handleContactClient = (order) => {
-    const client = clients.find(c => c.id === order.clientId);
+    const client = clients.find(c => c.id === order.client_id);
     if (client && client.phone) {
       if (window.confirm(`¿Quieres llamar a ${client.name} al número ${client.phone}?`)) {
         window.location.href = `tel:${client.phone}`;
@@ -50,14 +50,17 @@ const ActiveDeliveries = () => {
   };
 
   const handleNavigate = (address) => {
-    const query = encodeURIComponent(`${address.street}, ${address.city}`);
+    const query = encodeURIComponent(address.address);
     const url = `https://www.google.com/maps/dir/?api=1&destination=${query}`;
     window.open(url, '_blank');
   };
 
+  if (!deliveryPerson) {
+    return <div className="text-white text-center">Cargando datos del repartidor...</div>;
+  }
+
   return (
     <div className="space-y-8">
-      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -71,7 +74,6 @@ const ActiveDeliveries = () => {
         </p>
       </motion.div>
 
-      {/* Active Deliveries */}
       <div className="space-y-6">
         {activeDeliveries.length === 0 ? (
           <motion.div
@@ -104,27 +106,22 @@ const ActiveDeliveries = () => {
                   <div className="flex justify-between items-start">
                     <div>
                       <CardTitle className="text-white">
-                        Pedido #{order.id}
+                        Pedido #{order.id.substring(0, 8)}
                       </CardTitle>
-                      <p className="text-white/70">{order.businessName}</p>
-                      <p className="text-white/60 text-sm">
-                        Cliente: {order.clientName}
-                      </p>
                     </div>
                     <div className="text-right">
                       <div className="bg-indigo-500 text-white px-3 py-1 rounded-full text-sm font-medium mb-2">
                         En camino
                       </div>
-                      <p className="text-white font-bold text-lg">${order.total.toFixed(2)}</p>
+                      <p className="text-white font-bold text-lg">${order.total_price.toFixed(2)}</p>
                       <p className="text-green-400 text-sm">
-                        +${(order.total * 0.15).toFixed(2)} para ti
+                        +${(order.total_price * 0.15).toFixed(2)} para ti
                       </p>
                     </div>
                   </div>
                 </CardHeader>
                 
                 <CardContent className="space-y-6">
-                  {/* Delivery Address */}
                   <div className="bg-white/5 rounded-lg p-4">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -133,16 +130,13 @@ const ActiveDeliveries = () => {
                           Dirección de entrega
                         </h4>
                         <p className="text-white/70">
-                          {order.deliveryAddress.street}
-                        </p>
-                        <p className="text-white/70">
-                          {order.deliveryAddress.city}
+                          {order.delivery_address.address}
                         </p>
                       </div>
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleNavigate(order.deliveryAddress)}
+                        onClick={() => handleNavigate(order.delivery_address)}
                         className="border-blue-500/50 text-blue-400 hover:bg-blue-500/10"
                       >
                         <Navigation className="w-4 h-4 mr-1" />
@@ -151,7 +145,6 @@ const ActiveDeliveries = () => {
                     </div>
                   </div>
 
-                  {/* Order Items */}
                   <div>
                     <h4 className="text-white font-medium mb-3">Productos a entregar:</h4>
                     <div className="space-y-2">
@@ -169,12 +162,11 @@ const ActiveDeliveries = () => {
                     <div className="border-t border-white/20 pt-2 mt-3">
                       <div className="flex justify-between font-bold">
                         <span className="text-white">Total del pedido:</span>
-                        <span className="text-white">${order.total.toFixed(2)}</span>
+                        <span className="text-white">${order.total_price.toFixed(2)}</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Action Buttons */}
                   <div className="flex gap-3">
                     <Button
                       onClick={() => handleContactClient(order)}
@@ -193,7 +185,6 @@ const ActiveDeliveries = () => {
                     </Button>
                   </div>
 
-                  {/* Delivery Instructions */}
                   <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
                     <h5 className="text-yellow-400 font-medium mb-1">Instrucciones:</h5>
                     <p className="text-white/70 text-sm">

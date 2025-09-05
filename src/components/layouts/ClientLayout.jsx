@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -23,9 +23,28 @@ const ClientLayout = ({ children }) => {
   const { orders } = useData();
   const { toast } = useToast();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [cartItemsCount, setCartItemsCount] = useState(0);
+
+  useEffect(() => {
+    const updateCartCount = () => {
+      const savedCart = localStorage.getItem('deliveryApp_cart');
+      const cart = savedCart ? JSON.parse(savedCart) : [];
+      const count = cart.reduce((total, item) => total + item.quantity, 0);
+      setCartItemsCount(count);
+    };
+
+    updateCartCount();
+
+    window.addEventListener('storage', updateCartCount);
+    const interval = setInterval(updateCartCount, 1000); // Poll for changes
+
+    return () => {
+      window.removeEventListener('storage', updateCartCount);
+      clearInterval(interval);
+    };
+  }, []);
 
   const userOrders = orders.filter(order => order.client_id === user?.id);
-  const cartItemsCount = 0; // Will be implemented later
 
   const navigation = [
     { name: 'Inicio', href: '/cliente', icon: Home },
@@ -44,7 +63,7 @@ const ClientLayout = ({ children }) => {
   };
 
   const userName = user?.user_metadata?.name || user?.email;
-  const userAvatar = user?.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${userName}&background=random`;
+  const userAvatar = user?.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=random`;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-pink-900">
@@ -59,12 +78,12 @@ const ClientLayout = ({ children }) => {
 
             <nav className="hidden md:flex space-x-8">
               {navigation.map((item) => {
-                const isActive = location.pathname === item.href;
+                const isActive = location.pathname.startsWith(item.href);
                 return (
                   <Link
                     key={item.name}
                     to={item.href}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 ${
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 relative ${
                       isActive
                         ? 'bg-white/20 text-white'
                         : 'text-white/70 hover:text-white hover:bg-white/10'
@@ -73,7 +92,7 @@ const ClientLayout = ({ children }) => {
                     <item.icon className="w-5 h-5" />
                     {item.name}
                     {item.badge > 0 && (
-                      <span className="bg-red-500 text-white text-xs rounded-full px-2 py-1 min-w-[20px] text-center">
+                      <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
                         {item.badge}
                       </span>
                     )}
@@ -121,13 +140,13 @@ const ClientLayout = ({ children }) => {
           >
             <div className="px-4 py-4 space-y-2">
               {navigation.map((item) => {
-                const isActive = location.pathname === item.href;
+                const isActive = location.pathname.startsWith(item.href);
                 return (
                   <Link
                     key={item.name}
                     to={item.href}
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${
+                    className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 relative ${
                       isActive
                         ? 'bg-white/20 text-white'
                         : 'text-white/70 hover:text-white hover:bg-white/10'
@@ -136,7 +155,7 @@ const ClientLayout = ({ children }) => {
                     <item.icon className="w-5 h-5" />
                     {item.name}
                     {item.badge > 0 && (
-                      <span className="bg-red-500 text-white text-xs rounded-full px-2 py-1 min-w-[20px] text-center">
+                      <span className="ml-auto bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
                         {item.badge}
                       </span>
                     )}

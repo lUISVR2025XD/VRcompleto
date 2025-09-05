@@ -1,7 +1,8 @@
+
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useData } from '@/contexts/DataContext';
 import { DollarSign, ShoppingBag, Clock, TrendingUp } from 'lucide-react';
 
@@ -9,17 +10,17 @@ const BusinessOverview = () => {
   const { user } = useAuth();
   const { orders, businesses } = useData();
 
-  const business = businesses.find(b => b.id === user?.businessId) || businesses[0];
-  const businessOrders = orders.filter(order => order.businessId === business?.id);
+  const business = businesses.find(b => b.id === user?.id);
+  const businessOrders = orders.filter(order => order.business_id === business?.id);
   
   const todayOrders = businessOrders.filter(order => {
     const today = new Date().toDateString();
-    return new Date(order.createdAt).toDateString() === today;
+    return new Date(order.created_at).toDateString() === today;
   });
 
   const totalRevenue = businessOrders
     .filter(order => order.status === 'delivered')
-    .reduce((sum, order) => sum + order.total, 0);
+    .reduce((sum, order) => sum + order.total_price, 0);
 
   const pendingOrders = businessOrders.filter(order => order.status === 'pending').length;
   const activeOrders = businessOrders.filter(order => 
@@ -57,9 +58,12 @@ const BusinessOverview = () => {
     }
   ];
 
+  if (!business) {
+    return <div className="text-white text-center">Cargando datos del negocio...</div>;
+  }
+
   return (
     <div className="space-y-8">
-      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -73,7 +77,6 @@ const BusinessOverview = () => {
         </p>
       </motion.div>
 
-      {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, index) => (
           <motion.div
@@ -100,7 +103,6 @@ const BusinessOverview = () => {
         ))}
       </div>
 
-      {/* Recent Orders */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -127,14 +129,13 @@ const BusinessOverview = () => {
                     className="flex items-center justify-between p-4 bg-white/5 rounded-lg"
                   >
                     <div>
-                      <p className="text-white font-medium">Pedido #{order.id}</p>
-                      <p className="text-white/70 text-sm">{order.clientName}</p>
+                      <p className="text-white font-medium">Pedido #{order.id.substring(0, 8)}</p>
                       <p className="text-white/60 text-xs">
-                        {new Date(order.createdAt).toLocaleString('es-ES')}
+                        {new Date(order.created_at).toLocaleString('es-ES')}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-white font-bold">${order.total.toFixed(2)}</p>
+                      <p className="text-white font-bold">${order.total_price.toFixed(2)}</p>
                       <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
                         order.status === 'pending' ? 'bg-yellow-500 text-white' :
                         order.status === 'accepted' ? 'bg-blue-500 text-white' :
@@ -161,7 +162,6 @@ const BusinessOverview = () => {
         </Card>
       </motion.div>
 
-      {/* Business Status */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -175,10 +175,10 @@ const BusinessOverview = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="text-center">
                 <div className={`w-4 h-4 rounded-full mx-auto mb-2 ${
-                  business?.isOpen ? 'bg-green-500' : 'bg-red-500'
+                  business?.is_open ? 'bg-green-500' : 'bg-red-500'
                 }`}></div>
                 <p className="text-white font-medium">
-                  {business?.isOpen ? 'Abierto' : 'Cerrado'}
+                  {business?.is_open ? 'Abierto' : 'Cerrado'}
                 </p>
                 <p className="text-white/70 text-sm">Estado actual</p>
               </div>
@@ -187,7 +187,7 @@ const BusinessOverview = () => {
                 <p className="text-white/70 text-sm">Calificación</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold text-white">{business?.deliveryTime}</p>
+                <p className="text-2xl font-bold text-white">{business?.delivery_time}</p>
                 <p className="text-white/70 text-sm">Tiempo de entrega</p>
               </div>
             </div>

@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/components/ui/use-toast';
 import { ArrowLeft, Plus, Minus, Trash2, MapPin, CreditCard } from 'lucide-react';
@@ -21,15 +21,18 @@ const Cart = () => {
     return savedCart ? JSON.parse(savedCart) : [];
   });
   
-  const [deliveryAddress, setDeliveryAddress] = useState({
-    street: '',
-    city: '',
-    coordinates: { lat: 40.7128, lng: -74.0060 }
+  const [deliveryAddress, setDeliveryAddress] = useState(() => {
+      const savedAddress = localStorage.getItem('deliveryApp_lastAddress');
+      return savedAddress || '';
   });
+
+  useEffect(() => {
+    localStorage.setItem('deliveryApp_cart', JSON.stringify(cart));
+    window.dispatchEvent(new Event('storage'));
+  }, [cart]);
 
   const updateCart = (newCart) => {
     setCart(newCart);
-    localStorage.setItem('deliveryApp_cart', JSON.stringify(newCart));
   };
 
   const updateQuantity = (productId, change) => {
@@ -61,41 +64,50 @@ const Cart = () => {
     });
   };
 
-  const handleCheckout = () => {
-    if (!deliveryAddress.street || !deliveryAddress.city) {
+  const handleCheckout = async () => {
+    if (!deliveryAddress.trim()) {
       toast({
         title: "Dirección requerida",
-        description: "Por favor ingresa tu dirección de entrega",
+        description: "Por favor, ingresa tu dirección de entrega.",
         variant: "destructive"
       });
       return;
     }
 
-    const business = businesses.find(b => b.id === cart[0]?.businessId);
-    
-    const order = {
-      clientId: user.id,
-      clientName: user.name,
-      businessId: cart[0].businessId,
-      businessName: cart[0].businessName,
+    if (cart.length === 0) {
+        toast({
+            title: "Carrito vacío",
+            description: "No puedes realizar un pedido con el carrito vacío.",
+            variant: "destructive"
+        });
+        return;
+    }
+
+    const orderData = {
+      client_id: user.id,
+      business_id: cart[0].businessId,
       items: cart,
-      subtotal: cartTotal,
-      deliveryFee: business?.deliveryFee || 0,
-      total: cartTotal + (business?.deliveryFee || 0),
-      deliveryAddress,
+      total_price: finalTotal,
+      delivery_address: { address: deliveryAddress },
       status: 'pending',
-      estimatedTime: business?.deliveryTime || '30-45 min'
     };
 
-    const newOrder = addOrder(order);
-    updateCart([]);
-    
-    toast({
-      title: "¡Pedido realizado!",
-      description: `Tu pedido #${newOrder.id} ha sido enviado al restaurante`,
-    });
-    
-    navigate(`/seguimiento/${newOrder.id}`);
+    const newOrder = await addOrder(orderData);
+    if (newOrder) {
+      localStorage.setItem('deliveryApp_lastAddress', deliveryAddress);
+      updateCart([]);
+      toast({
+        title: "¡Pedido realizado!",
+        description: `Tu pedido ha sido enviado al restaurante.`,
+      });
+      navigate(`/cliente/pedidos`);
+    } else {
+      toast({
+        title: "Error al realizar el pedido",
+        description: "Hubo un problema al procesar tu pedido. Verifica tus datos e inténtalo de nuevo.",
+        variant: "destructive"
+      });
+    }
   };
 
   if (cart.length === 0) {
@@ -140,12 +152,11 @@ const Cart = () => {
 
   const cartTotal = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
   const business = businesses.find(b => b.id === cart[0]?.businessId);
-  const deliveryFee = business?.deliveryFee || 0;
+  const deliveryFee = business?.delivery_fee || 0;
   const finalTotal = cartTotal + deliveryFee;
 
   return (
     <div className="space-y-8">
-      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -174,7 +185,6 @@ const Cart = () => {
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Cart Items */}
         <div className="lg:col-span-2 space-y-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -196,11 +206,11 @@ const Cart = () => {
                     transition={{ delay: 0.1 * index }}
                     className="flex items-center gap-4 p-4 bg-white/5 rounded-lg"
                   >
-                    <img
+                    <img 
                       src={item.image}
                       alt={item.name}
                       className="w-16 h-16 object-cover rounded-lg"
-                    />
+                     src="https://images.unsplash.com/photo-1690809080506-820f12d90f11" />
                     <div className="flex-1">
                       <h4 className="text-white font-medium">{item.name}</h4>
                       <p className="text-white/60 text-sm">${item.price}</p>
@@ -243,7 +253,6 @@ const Cart = () => {
             </Card>
           </motion.div>
 
-          {/* Delivery Address */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -251,38 +260,29 @@ const Cart = () => {
           >
             <Card className="glass-card border-0">
               <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                  <MapPin className="w-5 h-5" />
-                  Dirección de Entrega
+                <CardTitle className="text-white flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-5 h-5" />
+                    Dirección de Entrega
+                  </div>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="street" className="text-white">Calle y número</Label>
-                  <Input
-                    id="street"
-                    placeholder="Ej: Av. Principal 123"
-                    value={deliveryAddress.street}
-                    onChange={(e) => setDeliveryAddress({ ...deliveryAddress, street: e.target.value })}
-                    className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="city" className="text-white">Ciudad</Label>
-                  <Input
-                    id="city"
-                    placeholder="Ej: Ciudad de México"
-                    value={deliveryAddress.city}
-                    onChange={(e) => setDeliveryAddress({ ...deliveryAddress, city: e.target.value })}
-                    className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
-                  />
-                </div>
+                 <div>
+                    <Label htmlFor="full_address" className="text-white">Domicilio completo (calle, número, colonia, etc.)</Label>
+                    <Input
+                      id="full_address"
+                      placeholder="Ej: Av. Siempre Viva 742, Springfield"
+                      value={deliveryAddress}
+                      onChange={(e) => setDeliveryAddress(e.target.value)}
+                      className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
+                    />
+                 </div>
               </CardContent>
             </Card>
           </motion.div>
         </div>
 
-        {/* Order Summary */}
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -316,7 +316,7 @@ const Cart = () => {
                 </div>
 
                 <div className="space-y-2 text-sm text-white/60">
-                  <p>• Tiempo estimado: {business?.deliveryTime}</p>
+                  <p>• Tiempo estimado: {business?.delivery_time}</p>
                   <p>• Pago contra entrega</p>
                   <p>• Seguimiento en tiempo real</p>
                 </div>
@@ -324,6 +324,7 @@ const Cart = () => {
                 <Button
                   onClick={handleCheckout}
                   className="w-full bg-gradient-to-r from-green-500 to-teal-600 hover:opacity-90 text-lg py-6"
+                  disabled={!deliveryAddress.trim()}
                 >
                   Realizar Pedido
                 </Button>

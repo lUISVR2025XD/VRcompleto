@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 
 const DataContext = createContext();
 
@@ -13,6 +14,7 @@ export const useData = () => {
 };
 
 export const DataProvider = ({ children }) => {
+  const { user, loading: authLoading } = useAuth();
   const [businesses, setBusinesses] = useState([]);
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
@@ -23,29 +25,47 @@ export const DataProvider = ({ children }) => {
   const fetchData = useCallback(async (table, setter) => {
     const { data, error } = await supabase.from(table).select('*');
     if (error) console.error(`Error fetching ${table}:`, error);
-    else setter(data);
+    else setter(data || []);
   }, []);
 
-  useEffect(() => {
-    const loadAllData = async () => {
-      setLoading(true);
-      await Promise.all([
-        fetchData('businesses', setBusinesses),
-        fetchData('orders', setOrders),
-        fetchData('products', setProducts),
-        fetchData('delivery_persons', setDeliveryPersons),
-        fetchData('clients', setClients),
-      ]);
-      setLoading(false);
-    };
-    loadAllData();
+  const initData = useCallback(async () => {
+    setLoading(true);
+    await Promise.all([
+      fetchData('businesses', setBusinesses),
+      fetchData('orders', setOrders),
+      fetchData('products', setProducts),
+      fetchData('delivery_persons', setDeliveryPersons),
+      fetchData('clients', setClients),
+    ]);
+    setLoading(false);
   }, [fetchData]);
+
+  useEffect(() => {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+    if (!user) {
+      setLoading(false);
+      setBusinesses([]);
+      setOrders([]);
+      setProducts([]);
+      setDeliveryPersons([]);
+      setClients([]);
+      return;
+    }
+
+    initData();
+  }, [user, authLoading, initData]);
 
   const addOrder = async (order) => {
     const { data, error } = await supabase.from('orders').insert(order).select();
     if (error) { console.error('Error adding order:', error); return null; }
-    setOrders(prev => [...prev, data[0]]);
-    return data[0];
+    if (data && data.length > 0) {
+        setOrders(prev => [...prev, data[0]]);
+        return data[0];
+    }
+    return null;
   };
 
   const updateOrder = async (orderId, updates) => {

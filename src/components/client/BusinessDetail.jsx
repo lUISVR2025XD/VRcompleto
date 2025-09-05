@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useData } from '@/contexts/DataContext';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { ArrowLeft, Star, Clock, MapPin, Plus, Minus, ShoppingCart, FileText } from 'lucide-react';
 
@@ -19,8 +20,12 @@ const BusinessDetail = () => {
     return savedCart ? JSON.parse(savedCart) : [];
   });
 
+  useEffect(() => {
+    localStorage.setItem('deliveryApp_cart', JSON.stringify(cart));
+  }, [cart]);
+
   const business = businesses.find(b => b.id === businessId);
-  const businessProducts = products.filter(p => p.businessId === businessId);
+  const businessProducts = products.filter(p => p.business_id === businessId);
 
   if (!business) {
     return (
@@ -50,7 +55,6 @@ const BusinessDetail = () => {
     }
     
     setCart(newCart);
-    localStorage.setItem('deliveryApp_cart', JSON.stringify(newCart));
     
     toast({
       title: "Producto agregado",
@@ -68,7 +72,6 @@ const BusinessDetail = () => {
     }).filter(Boolean);
     
     setCart(newCart);
-    localStorage.setItem('deliveryApp_cart', JSON.stringify(newCart));
   };
 
   const getItemQuantity = (productId) => {
@@ -81,7 +84,6 @@ const BusinessDetail = () => {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -98,7 +100,6 @@ const BusinessDetail = () => {
         <h1 className="text-3xl font-bold text-white">Menú de {business.name}</h1>
       </motion.div>
 
-      {/* Business Info */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -106,14 +107,14 @@ const BusinessDetail = () => {
       >
         <Card className="glass-card border-0 overflow-hidden">
           <div className="relative">
-            <img  alt={business.name} className="w-full h-64 object-cover" src="https://images.unsplash.com/photo-1697256200022-f61abccad430" />
+            <img  alt={business.name} className="w-full h-64 object-cover" src="https://images.unsplash.com/photo-1684675144506-b181f5209c5a" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
             <div className="absolute bottom-6 left-6 text-white">
               <h2 className="text-3xl font-bold mb-2">{business.name}</h2>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
                 <div className="flex items-center gap-1"><Star className="w-4 h-4 text-yellow-400 fill-current" /><span>{business.rating}</span></div>
-                <div className="flex items-center gap-1"><Clock className="w-4 h-4" /><span>{business.deliveryTime}</span></div>
-                <div className="flex items-center gap-1"><MapPin className="w-4 h-4" /><span>${business.deliveryFee} envío</span></div>
+                <div className="flex items-center gap-1"><Clock className="w-4 h-4" /><span>{business.delivery_time}</span></div>
+                <div className="flex items-center gap-1"><MapPin className="w-4 h-4" /><span>${business.delivery_fee} envío</span></div>
                  {business.promotions && business.promotions.length > 0 && (
                   <a href={business.promotions[0].url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 bg-blue-500/80 px-2 py-1 rounded-md text-white hover:bg-blue-500">
                     <FileText className="w-4 h-4" />
@@ -126,7 +127,6 @@ const BusinessDetail = () => {
         </Card>
       </motion.div>
 
-      {/* Menu */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
           {categories.map((category, categoryIndex) => (
@@ -144,7 +144,7 @@ const BusinessDetail = () => {
                     <Card key={product.id} className="glass-card border-0">
                       <CardContent className="p-6">
                         <div className="flex gap-4">
-                          <img  alt={product.name} className="w-24 h-24 object-cover rounded-lg" src="https://images.unsplash.com/photo-1635865165118-917ed9e20936" />
+                          <img  alt={product.name} className="w-24 h-24 object-cover rounded-lg" src="https://images.unsplash.com/photo-1667186625778-053129d77f3d" />
                           <div className="flex-1">
                             <h4 className="text-lg font-bold text-white mb-2">{product.name}</h4>
                             <p className="text-white/70 text-sm mb-3">{product.description}</p>
@@ -172,7 +172,6 @@ const BusinessDetail = () => {
           ))}
         </div>
 
-        {/* Cart Summary */}
         {cartItemsCount > 0 && (
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="lg:col-span-1">
             <div className="sticky top-24">
@@ -193,8 +192,8 @@ const BusinessDetail = () => {
                   </div>
                   <div className="border-t border-white/20 pt-4">
                     <div className="flex justify-between items-center mb-2"><span className="text-white/70">Subtotal</span><span className="text-white">${cartTotal.toFixed(2)}</span></div>
-                    <div className="flex justify-between items-center mb-4"><span className="text-white/70">Envío</span><span className="text-white">${business.deliveryFee}</span></div>
-                    <div className="flex justify-between items-center mb-4 text-lg font-bold"><span className="text-white">Total</span><span className="text-white">${(cartTotal + business.deliveryFee).toFixed(2)}</span></div>
+                    <div className="flex justify-between items-center mb-4"><span className="text-white/70">Envío</span><span className="text-white">${business.delivery_fee}</span></div>
+                    <div className="flex justify-between items-center mb-4 text-lg font-bold"><span className="text-white">Total</span><span className="text-white">${(cartTotal + business.delivery_fee).toFixed(2)}</span></div>
                     <Button onClick={() => navigate('/cliente/carrito')} className="w-full bg-gradient-to-r from-green-500 to-teal-600 hover:opacity-90">Ir al carrito</Button>
                   </div>
                 </CardContent>

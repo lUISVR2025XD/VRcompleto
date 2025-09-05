@@ -4,7 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import { Helmet } from 'react-helmet';
 import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider, useAuth } from '@/contexts/SupabaseAuthContext';
-import { DataProvider } from '@/contexts/DataContext';
+import { DataProvider, useData } from '@/contexts/DataContext';
 import HomePage from '@/pages/HomePage';
 import ClientDashboard from '@/pages/ClientDashboard';
 import BusinessDashboard from '@/pages/BusinessDashboard';
@@ -14,8 +14,11 @@ import OrderTracking from '@/pages/OrderTracking';
 import AuthCallback from '@/pages/AuthCallback';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading, session } = useAuth();
+  const { loading: dataLoading } = useData();
   const location = useLocation();
+
+  const loading = authLoading || (session && dataLoading);
 
   if (loading) {
     return <div className="flex justify-center items-center h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-pink-900 text-white text-xl">Cargando...</div>;
@@ -27,11 +30,9 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   
   const userRole = user.user_metadata?.role;
   if (allowedRoles && !allowedRoles.includes(userRole)) {
-    // If user has a role but not the allowed one, redirect to their own dashboard
     if (userRole) {
       return <Navigate to={`/${userRole}`} replace />;
     }
-    // If no role, redirect to home
     return <Navigate to="/" replace />;
   }
 
@@ -39,9 +40,9 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 };
 
 const AppRoutes = () => {
-  const { user, loading } = useAuth();
+  const { loading: authLoading } = useAuth();
 
-  if (loading) {
+  if (authLoading) {
     return <div className="flex justify-center items-center h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-pink-900 text-white text-xl">Cargando plataforma...</div>;
   }
 
@@ -64,7 +65,7 @@ function App() {
     <Router>
       <AuthProvider>
         <DataProvider>
-          <div className="min-h-screen">
+          <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-pink-900">
             <Helmet>
               <title>VRtelolleva - Plataforma de Entregas a Domicilio</title>
               <meta name="description" content="Conecta clientes, negocios y repartidores en una plataforma integrada de entregas a domicilio" />

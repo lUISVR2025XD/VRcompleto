@@ -25,14 +25,14 @@ const UserForm = ({ isOpen, setIsOpen, user, userType }) => {
         name: user.name || '',
         email: user.email || '',
         phone: user.phone || '',
-        isActive: user.isActive,
+        is_active: user.is_active,
       });
     } else {
       setFormData({
         name: '',
         email: '',
         phone: '',
-        isActive: true,
+        is_active: true,
       });
     }
   }, [user, isOpen]);
@@ -43,21 +43,23 @@ const UserForm = ({ isOpen, setIsOpen, user, userType }) => {
   };
 
   const handleSwitchChange = (checked) => {
-    setFormData((prev) => ({ ...prev, isActive: checked }));
+    setFormData((prev) => ({ ...prev, is_active: checked }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     try {
         if (user) { // Editing existing user
-            if (userType === 'Cliente') updateClient(user.id, formData);
-            if (userType === 'Negocio') updateBusiness(user.id, formData);
-            if (userType === 'Repartidor') updateDeliveryPerson(user.id, formData);
+            if (userType === 'Cliente') await updateClient(user.id, formData);
+            if (userType === 'Negocio') await updateBusiness(user.id, formData);
+            if (userType === 'Repartidor') await updateDeliveryPerson(user.id, formData);
             toast({ title: 'Usuario actualizado', description: 'Los datos del usuario han sido actualizados.' });
         } else { // Creating new user
-            if (userType === 'Cliente') addClient(formData);
-            if (userType === 'Negocio') addBusiness(formData);
-            if (userType === 'Repartidor') addDeliveryPerson(formData);
+            // Note: Creating users via this form won't create an auth user in Supabase.
+            // This is for data management within the app's tables.
+            if (userType === 'Cliente') await addClient(formData);
+            if (userType === 'Negocio') await addBusiness(formData);
+            if (userType === 'Repartidor') await addDeliveryPerson(formData);
             toast({ title: 'Usuario creado', description: 'El nuevo usuario ha sido añadido.' });
         }
         setIsOpen(false);
@@ -72,7 +74,7 @@ const UserForm = ({ isOpen, setIsOpen, user, userType }) => {
         <DialogHeader>
           <DialogTitle>{user ? 'Editar' : 'Crear'} {userType}</DialogTitle>
           <DialogDescription className="text-white/70">
-            {user ? 'Modifica los datos del usuario.' : `Rellena los campos para crear un nuevo ${userType.toLowerCase()}.`}
+            {user ? 'Modifica los datos del usuario.' : `Rellena los campos para crear un nuevo ${userType?.toLowerCase()}.`}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -89,8 +91,8 @@ const UserForm = ({ isOpen, setIsOpen, user, userType }) => {
             <Input id="phone" value={formData.phone || ''} onChange={handleChange} placeholder="+1234567890" className="bg-white/10 border-white/20 placeholder:text-white/50" />
           </div>
            <div className="flex items-center space-x-2">
-            <Switch id="isActive" checked={formData.isActive} onCheckedChange={handleSwitchChange} />
-            <Label htmlFor="isActive">Activo</Label>
+            <Switch id="is_active" checked={formData.is_active} onCheckedChange={handleSwitchChange} />
+            <Label htmlFor="is_active">Activo</Label>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)} className="border-white/20 text-white hover:bg-white/10">

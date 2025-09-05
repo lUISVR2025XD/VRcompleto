@@ -1,37 +1,64 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { ArrowLeft, User, Mail, Phone, MapPin, Save } from 'lucide-react';
+import { supabase } from '@/lib/customSupabaseClient';
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { user, updateUser } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   
   const [profile, setProfile] = useState({
-    name: user?.name || '',
-    email: user?.email || '',
-    phone: user?.phone || '',
-    address: user?.address || ''
+    name: '',
+    email: '',
+    phone: '',
+    address: ''
   });
 
-  const handleSave = () => {
-    updateUser(profile);
-    toast({
-      title: "Perfil actualizado",
-      description: "Tus datos se han guardado correctamente",
+  useEffect(() => {
+    if (user) {
+      setProfile({
+        name: user.user_metadata?.name || '',
+        email: user.email || '',
+        phone: user.user_metadata?.phone || '',
+        address: user.user_metadata?.address || ''
+      });
+    }
+  }, [user]);
+
+  const handleSave = async () => {
+    const { error } = await supabase.auth.updateUser({
+      data: { 
+        name: profile.name,
+        phone: profile.phone,
+        address: profile.address
+      }
     });
+
+    if (error) {
+      toast({
+        title: "Error al actualizar",
+        description: error.message,
+        variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "Perfil actualizado",
+        description: "Tus datos se han guardado correctamente",
+      });
+    }
   };
 
   return (
     <div className="space-y-8">
-      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -49,7 +76,6 @@ const Profile = () => {
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Profile Info */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -80,8 +106,8 @@ const Profile = () => {
                     id="email"
                     type="email"
                     value={profile.email}
-                    onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                    className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
+                    disabled
+                    className="bg-white/10 border-white/20 text-white placeholder:text-white/50 disabled:opacity-70"
                   />
                 </div>
               </div>
@@ -120,7 +146,6 @@ const Profile = () => {
           </Card>
         </motion.div>
 
-        {/* Profile Summary */}
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -129,13 +154,12 @@ const Profile = () => {
         >
           <Card className="glass-card border-0">
             <CardContent className="p-6 text-center">
-              <img
-                src={user?.avatar}
-                alt={user?.name}
+              <img 
+                alt={profile.name}
                 className="w-24 h-24 rounded-full mx-auto mb-4"
-              />
-              <h3 className="text-xl font-bold text-white mb-2">{user?.name}</h3>
-              <p className="text-white/70">{user?.email}</p>
+               src="https://images.unsplash.com/photo-1652841190565-b96e0acbae17" />
+              <h3 className="text-xl font-bold text-white mb-2">{profile.name}</h3>
+              <p className="text-white/70">{profile.email}</p>
             </CardContent>
           </Card>
 

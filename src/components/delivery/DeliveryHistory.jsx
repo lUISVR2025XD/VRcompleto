@@ -1,26 +1,30 @@
+
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useData } from '@/contexts/DataContext';
 import { CheckCircle, DollarSign, MapPin, Clock } from 'lucide-react';
 
 const DeliveryHistory = () => {
   const { user } = useAuth();
-  const { orders, deliveryPersons } = useData();
+  const { orders, deliveryPersons, clients } = useData();
 
-  const deliveryPerson = deliveryPersons.find(d => d.id === user?.deliveryId) || deliveryPersons[0];
+  const deliveryPerson = deliveryPersons.find(d => d.id === user?.id);
   const completedDeliveries = orders
-    .filter(order => order.deliveryPersonId === deliveryPerson?.id && order.status === 'delivered')
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    .filter(order => order.delivery_person_id === deliveryPerson?.id && order.status === 'delivered')
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-  const totalEarnings = completedDeliveries.reduce((sum, order) => sum + (order.total * 0.15), 0);
+  const totalEarnings = completedDeliveries.reduce((sum, order) => sum + (order.total_price * 0.15), 0);
   const totalDeliveries = completedDeliveries.length;
   const averageEarning = totalDeliveries > 0 ? totalEarnings / totalDeliveries : 0;
 
+  if (!deliveryPerson) {
+    return <div className="text-white text-center">Cargando datos del repartidor...</div>;
+  }
+
   return (
     <div className="space-y-8">
-      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -34,7 +38,6 @@ const DeliveryHistory = () => {
         </p>
       </motion.div>
 
-      {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -79,7 +82,6 @@ const DeliveryHistory = () => {
         </motion.div>
       </div>
 
-      {/* Delivery History */}
       <div className="space-y-4">
         {completedDeliveries.length === 0 ? (
           <motion.div
@@ -94,7 +96,9 @@ const DeliveryHistory = () => {
             </p>
           </motion.div>
         ) : (
-          completedDeliveries.map((order, index) => (
+          completedDeliveries.map((order, index) => {
+            const client = clients.find(c => c.id === order.client_id);
+            return (
             <motion.div
               key={order.id}
               initial={{ opacity: 0, y: 20 }}
@@ -106,34 +110,32 @@ const DeliveryHistory = () => {
                   <div className="flex justify-between items-start">
                     <div>
                       <CardTitle className="text-white">
-                        Pedido #{order.id}
+                        Pedido #{order.id.substring(0, 8)}
                       </CardTitle>
-                      <p className="text-white/70">{order.businessName}</p>
                       <p className="text-white/60 text-sm">
-                        Cliente: {order.clientName}
+                        Cliente: {client?.name || 'Desconocido'}
                       </p>
                     </div>
                     <div className="text-right">
                       <div className="bg-green-500 text-white px-3 py-1 rounded-full text-sm font-medium mb-2">
                         Entregado
                       </div>
-                      <p className="text-white font-bold">${order.total.toFixed(2)}</p>
+                      <p className="text-white font-bold">${order.total_price.toFixed(2)}</p>
                       <p className="text-green-400 text-sm">
-                        +${(order.total * 0.15).toFixed(2)} ganado
+                        +${(order.total_price * 0.15).toFixed(2)} ganado
                       </p>
                     </div>
                   </div>
                 </CardHeader>
                 
                 <CardContent className="space-y-4">
-                  {/* Delivery Info */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="flex items-center gap-2">
                       <MapPin className="w-4 h-4 text-blue-400" />
                       <div>
                         <p className="text-white/70 text-sm">Entregado en:</p>
                         <p className="text-white text-sm">
-                          {order.deliveryAddress.street}, {order.deliveryAddress.city}
+                          {order.delivery_address.address}
                         </p>
                       </div>
                     </div>
@@ -142,7 +144,7 @@ const DeliveryHistory = () => {
                       <div>
                         <p className="text-white/70 text-sm">Fecha:</p>
                         <p className="text-white text-sm">
-                          {new Date(order.createdAt).toLocaleDateString('es-ES', {
+                          {new Date(order.created_at).toLocaleDateString('es-ES', {
                             day: 'numeric',
                             month: 'short',
                             year: 'numeric',
@@ -154,7 +156,6 @@ const DeliveryHistory = () => {
                     </div>
                   </div>
 
-                  {/* Order Items Summary */}
                   <div>
                     <p className="text-white/70 text-sm mb-2">
                       Productos entregados ({order.items.length}):
@@ -178,7 +179,7 @@ const DeliveryHistory = () => {
                 </CardContent>
               </Card>
             </motion.div>
-          ))
+          )})
         )}
       </div>
     </div>

@@ -1,8 +1,9 @@
+
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/components/ui/use-toast';
 import { MapPin, Clock, DollarSign, Package } from 'lucide-react';
@@ -12,13 +13,13 @@ const AvailableOrders = () => {
   const { orders, updateOrder, deliveryPersons, businesses } = useData();
   const { toast } = useToast();
 
-  const deliveryPerson = deliveryPersons.find(d => d.id === user?.deliveryId) || deliveryPersons[0];
+  const deliveryPerson = deliveryPersons.find(d => d.id === user?.id);
   const availableOrders = orders.filter(order => 
-    order.status === 'ready' && !order.deliveryPersonId
+    order.status === 'ready' && !order.delivery_person_id
   );
 
   const handleAcceptOrder = (order) => {
-    if (!deliveryPerson?.isOnline) {
+    if (!deliveryPerson?.is_online) {
       toast({
         title: "Debes estar en línea",
         description: "Conéctate para poder aceptar pedidos",
@@ -29,28 +30,29 @@ const AvailableOrders = () => {
 
     updateOrder(order.id, {
       status: 'delivering',
-      deliveryPersonId: deliveryPerson.id,
-      deliveryPersonName: deliveryPerson.name
+      delivery_person_id: deliveryPerson.id,
     });
 
     toast({
       title: "¡Pedido aceptado!",
-      description: `Has aceptado el pedido #${order.id}`,
+      description: `Has aceptado el pedido #${order.id.substring(0, 8)}`,
     });
   };
 
-  const calculateDistance = (order) => {
-    // Simulate distance calculation
+  const calculateDistance = () => {
     return (Math.random() * 5 + 1).toFixed(1);
   };
 
   const calculateCommission = (orderTotal) => {
-    return orderTotal * 0.15; // 15% commission
+    return orderTotal * 0.15;
   };
+
+  if (!deliveryPerson) {
+    return <div className="text-white text-center">Cargando datos del repartidor...</div>;
+  }
 
   return (
     <div className="space-y-8">
-      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -64,8 +66,7 @@ const AvailableOrders = () => {
         </p>
       </motion.div>
 
-      {/* Online Status Warning */}
-      {!deliveryPerson?.isOnline && (
+      {!deliveryPerson?.is_online && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -89,7 +90,6 @@ const AvailableOrders = () => {
         </motion.div>
       )}
 
-      {/* Available Orders */}
       <div className="space-y-4">
         {availableOrders.length === 0 ? (
           <motion.div
@@ -105,9 +105,9 @@ const AvailableOrders = () => {
           </motion.div>
         ) : (
           availableOrders.map((order, index) => {
-            const business = businesses.find(b => b.id === order.businessId);
-            const distance = calculateDistance(order);
-            const commission = calculateCommission(order.total);
+            const business = businesses.find(b => b.id === order.business_id);
+            const distance = calculateDistance();
+            const commission = calculateCommission(order.total_price);
             
             return (
               <motion.div
@@ -121,11 +121,11 @@ const AvailableOrders = () => {
                     <div className="flex justify-between items-start">
                       <div>
                         <CardTitle className="text-white">
-                          Pedido #{order.id}
+                          Pedido #{order.id.substring(0, 8)}
                         </CardTitle>
-                        <p className="text-white/70">{order.businessName}</p>
+                        <p className="text-white/70">{business?.name}</p>
                         <p className="text-white/60 text-sm">
-                          {new Date(order.createdAt).toLocaleString('es-ES')}
+                          {new Date(order.created_at).toLocaleString('es-ES')}
                         </p>
                       </div>
                       <div className="text-right">
@@ -137,12 +137,11 @@ const AvailableOrders = () => {
                   </CardHeader>
                   
                   <CardContent className="space-y-4">
-                    {/* Order Summary */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="flex items-center gap-2">
                         <DollarSign className="w-5 h-5 text-green-400" />
                         <div>
-                          <p className="text-white font-bold">${order.total.toFixed(2)}</p>
+                          <p className="text-white font-bold">${order.total_price.toFixed(2)}</p>
                           <p className="text-green-400 text-sm">+${commission.toFixed(2)} para ti</p>
                         </div>
                       </div>
@@ -162,7 +161,6 @@ const AvailableOrders = () => {
                       </div>
                     </div>
 
-                    {/* Addresses */}
                     <div className="space-y-3">
                       <div>
                         <h4 className="text-white font-medium mb-1">📍 Recoger en:</h4>
@@ -173,12 +171,11 @@ const AvailableOrders = () => {
                       <div>
                         <h4 className="text-white font-medium mb-1">🏠 Entregar en:</h4>
                         <p className="text-white/70 text-sm">
-                          {order.deliveryAddress.street}, {order.deliveryAddress.city}
+                          {order.delivery_address.address}
                         </p>
                       </div>
                     </div>
 
-                    {/* Order Items */}
                     <div>
                       <h4 className="text-white font-medium mb-2">Productos ({order.items.length}):</h4>
                       <div className="space-y-1">
@@ -200,14 +197,13 @@ const AvailableOrders = () => {
                       </div>
                     </div>
 
-                    {/* Action Button */}
                     <div className="pt-4 border-t border-white/20">
                       <Button
                         onClick={() => handleAcceptOrder(order)}
-                        disabled={!deliveryPerson?.isOnline}
+                        disabled={!deliveryPerson?.is_online}
                         className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-90 disabled:opacity-50"
                       >
-                        {deliveryPerson?.isOnline ? 'Aceptar Pedido' : 'Debes estar en línea'}
+                        {deliveryPerson?.is_online ? 'Aceptar Pedido' : 'Debes estar en línea'}
                       </Button>
                     </div>
                   </CardContent>

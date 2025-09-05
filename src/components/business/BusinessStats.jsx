@@ -1,28 +1,30 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useData } from '@/contexts/DataContext';
 import { BarChart3, TrendingUp, DollarSign, Users, Clock, Star } from 'lucide-react';
 
 const BusinessStats = () => {
   const { user } = useAuth();
-  const { orders, businesses } = useData();
+  const { orders, businesses, clients } = useData();
 
-  const business = businesses.find(b => b.id === user?.businessId) || businesses[0];
-  const businessOrders = orders.filter(order => order.businessId === business?.id);
+  const business = businesses.find(b => b.id === user?.id);
+  const businessOrders = orders.filter(order => order.business_id === business?.id);
 
-  // Calculate statistics
+  if (!business) {
+    return <div className="text-white text-center">Cargando estadísticas...</div>;
+  }
+
   const totalOrders = businessOrders.length;
   const completedOrders = businessOrders.filter(order => order.status === 'delivered').length;
   const totalRevenue = businessOrders
     .filter(order => order.status === 'delivered')
-    .reduce((sum, order) => sum + order.total, 0);
+    .reduce((sum, order) => sum + order.total_price, 0);
   
   const averageOrderValue = completedOrders > 0 ? totalRevenue / completedOrders : 0;
   const completionRate = totalOrders > 0 ? (completedOrders / totalOrders) * 100 : 0;
 
-  // Orders by status
   const ordersByStatus = {
     pending: businessOrders.filter(o => o.status === 'pending').length,
     accepted: businessOrders.filter(o => o.status === 'accepted').length,
@@ -33,7 +35,6 @@ const BusinessStats = () => {
     cancelled: businessOrders.filter(o => o.status === 'cancelled').length,
   };
 
-  // Recent performance (last 7 days)
   const last7Days = Array.from({ length: 7 }, (_, i) => {
     const date = new Date();
     date.setDate(date.getDate() - i);
@@ -42,11 +43,11 @@ const BusinessStats = () => {
 
   const dailyStats = last7Days.map(date => {
     const dayOrders = businessOrders.filter(order => 
-      new Date(order.createdAt).toDateString() === date
+      new Date(order.created_at).toDateString() === date
     );
     const dayRevenue = dayOrders
       .filter(order => order.status === 'delivered')
-      .reduce((sum, order) => sum + order.total, 0);
+      .reduce((sum, order) => sum + order.total_price, 0);
     
     return {
       date: new Date(date).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' }),
@@ -88,7 +89,6 @@ const BusinessStats = () => {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -102,7 +102,6 @@ const BusinessStats = () => {
         </p>
       </motion.div>
 
-      {/* Main Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, index) => (
           <motion.div
@@ -129,9 +128,7 @@ const BusinessStats = () => {
         ))}
       </div>
 
-      {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Daily Performance */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -154,7 +151,7 @@ const BusinessStats = () => {
                       <div className="w-20 bg-white/20 rounded-full h-2">
                         <div 
                           className="bg-gradient-to-r from-green-500 to-teal-600 h-2 rounded-full"
-                          style={{ width: `${Math.min((day.orders / Math.max(...dailyStats.map(d => d.orders))) * 100, 100)}%` }}
+                          style={{ width: `${Math.min((day.orders / (Math.max(...dailyStats.map(d => d.orders)) || 1)) * 100, 100)}%` }}
                         />
                       </div>
                     </div>
@@ -165,7 +162,6 @@ const BusinessStats = () => {
           </Card>
         </motion.div>
 
-        {/* Order Status Distribution */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -180,25 +176,13 @@ const BusinessStats = () => {
                 {Object.entries(ordersByStatus).map(([status, count]) => {
                   const percentage = totalOrders > 0 ? (count / totalOrders) * 100 : 0;
                   const statusLabels = {
-                    pending: 'Pendientes',
-                    accepted: 'Aceptados',
-                    preparing: 'Preparando',
-                    ready: 'Listos',
-                    delivering: 'En camino',
-                    delivered: 'Entregados',
-                    cancelled: 'Cancelados'
+                    pending: 'Pendientes', accepted: 'Aceptados', preparing: 'Preparando',
+                    ready: 'Listos', delivering: 'En camino', delivered: 'Entregados', cancelled: 'Cancelados'
                   };
-                  
                   const statusColors = {
-                    pending: 'from-yellow-500 to-amber-500',
-                    accepted: 'from-blue-500 to-cyan-500',
-                    preparing: 'from-orange-500 to-red-500',
-                    ready: 'from-purple-500 to-violet-500',
-                    delivering: 'from-indigo-500 to-blue-500',
-                    delivered: 'from-green-500 to-emerald-500',
-                    cancelled: 'from-red-500 to-pink-500'
+                    pending: 'from-yellow-500 to-amber-500', accepted: 'from-blue-500 to-cyan-500', preparing: 'from-orange-500 to-red-500',
+                    ready: 'from-purple-500 to-violet-500', delivering: 'from-indigo-500 to-blue-500', delivered: 'from-green-500 to-emerald-500', cancelled: 'from-red-500 to-pink-500'
                   };
-
                   return (
                     <div key={status} className="flex items-center justify-between">
                       <span className="text-white/70 text-sm">{statusLabels[status]}</span>
@@ -210,9 +194,7 @@ const BusinessStats = () => {
                             style={{ width: `${percentage}%` }}
                           />
                         </div>
-                        <span className="text-white/60 text-sm w-12 text-right">
-                          {percentage.toFixed(0)}%
-                        </span>
+                        <span className="text-white/60 text-sm w-12 text-right">{percentage.toFixed(0)}%</span>
                       </div>
                     </div>
                   );
@@ -223,7 +205,6 @@ const BusinessStats = () => {
         </motion.div>
       </div>
 
-      {/* Business Performance */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -236,31 +217,23 @@ const BusinessStats = () => {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="text-center">
-                <div className="flex items-center justify-center mb-2">
-                  <Star className="w-8 h-8 text-yellow-400" />
-                </div>
+                <div className="flex items-center justify-center mb-2"><Star className="w-8 h-8 text-yellow-400" /></div>
                 <p className="text-2xl font-bold text-white">{business?.rating}</p>
                 <p className="text-white/70 text-sm">Calificación</p>
               </div>
               <div className="text-center">
-                <div className="flex items-center justify-center mb-2">
-                  <Clock className="w-8 h-8 text-blue-400" />
-                </div>
-                <p className="text-2xl font-bold text-white">{business?.deliveryTime}</p>
+                <div className="flex items-center justify-center mb-2"><Clock className="w-8 h-8 text-blue-400" /></div>
+                <p className="text-2xl font-bold text-white">{business?.delivery_time}</p>
                 <p className="text-white/70 text-sm">Tiempo promedio</p>
               </div>
               <div className="text-center">
-                <div className="flex items-center justify-center mb-2">
-                  <TrendingUp className="w-8 h-8 text-green-400" />
-                </div>
+                <div className="flex items-center justify-center mb-2"><TrendingUp className="w-8 h-8 text-green-400" /></div>
                 <p className="text-2xl font-bold text-white">{completionRate.toFixed(1)}%</p>
                 <p className="text-white/70 text-sm">Tasa de éxito</p>
               </div>
               <div className="text-center">
-                <div className="flex items-center justify-center mb-2">
-                  <Users className="w-8 h-8 text-purple-400" />
-                </div>
-                <p className="text-2xl font-bold text-white">{new Set(businessOrders.map(o => o.clientId)).size}</p>
+                <div className="flex items-center justify-center mb-2"><Users className="w-8 h-8 text-purple-400" /></div>
+                <p className="text-2xl font-bold text-white">{new Set(businessOrders.map(o => o.client_id)).size}</p>
                 <p className="text-white/70 text-sm">Clientes únicos</p>
               </div>
             </div>

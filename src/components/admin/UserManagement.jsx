@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/components/ui/use-toast';
-import { Users, Store, Truck, User, Search, Plus, Edit, Trash, ToggleLeft, ToggleRight, MoreVertical } from 'lucide-react';
+import { Users, Store, Truck, User, Search, Plus, Edit, Trash, MoreVertical } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import {
   DropdownMenu,
@@ -35,9 +35,9 @@ const UserManagement = () => {
   const [editingUser, setEditingUser] = useState(null);
 
   const allUsers = {
-    clients: clients.map(c => ({ ...c, type: 'Cliente', status: c.isActive ? 'Activo' : 'Inactivo' })),
-    businesses: businesses.map(b => ({ ...b, type: 'Negocio', status: b.isActive ? 'Activo' : 'Inactivo' })),
-    deliveryPersons: deliveryPersons.map(d => ({ ...d, type: 'Repartidor', status: d.isActive ? 'Activo' : 'Inactivo' })),
+    clients: clients.map(c => ({ ...c, type: 'Cliente', status: c.is_active ? 'Activo' : 'Inactivo' })),
+    businesses: businesses.map(b => ({ ...b, type: 'Negocio', status: b.is_active ? 'Activo' : 'Inactivo' })),
+    deliveryPersons: deliveryPersons.map(d => ({ ...d, type: 'Repartidor', status: d.is_active ? 'Activo' : 'Inactivo' })),
   };
 
   const filteredUsers = allUsers[activeTab].filter(user =>
@@ -55,11 +55,11 @@ const UserManagement = () => {
     setIsFormOpen(true);
   };
   
-  const handleDeleteUser = (user) => {
+  const handleDeleteUser = async (user) => {
     try {
-      if (user.type === 'Cliente') deleteClient(user.id);
-      if (user.type === 'Negocio') deleteBusiness(user.id);
-      if (user.type === 'Repartidor') deleteDeliveryPerson(user.id);
+      if (user.type === 'Cliente') await deleteClient(user.id);
+      if (user.type === 'Negocio') await deleteBusiness(user.id);
+      if (user.type === 'Repartidor') await deleteDeliveryPerson(user.id);
       toast({ title: 'Usuario eliminado', description: `${user.name} ha sido eliminado.` });
     } catch (error) {
       toast({ title: 'Error', description: 'No se pudo eliminar el usuario.', variant: 'destructive' });
@@ -67,12 +67,12 @@ const UserManagement = () => {
   };
 
 
-  const handleToggleStatus = (user) => {
-    const newStatus = !user.isActive;
+  const handleToggleStatus = async (user) => {
+    const newStatus = !user.is_active;
     try {
-      if (user.type === 'Cliente') updateClient(user.id, { isActive: newStatus });
-      if (user.type === 'Negocio') updateBusiness(user.id, { isActive: newStatus });
-      if (user.type === 'Repartidor') updateDeliveryPerson(user.id, { isActive: newStatus });
+      if (user.type === 'Cliente') await updateClient(user.id, { is_active: newStatus });
+      if (user.type === 'Negocio') await updateBusiness(user.id, { is_active: newStatus });
+      if (user.type === 'Repartidor') await updateDeliveryPerson(user.id, { is_active: newStatus });
       toast({ title: 'Estado actualizado', description: `El estado de ${user.name} es ahora ${newStatus ? 'Activo' : 'Inactivo'}.` });
     } catch (error) {
       toast({ title: 'Error', description: 'No se pudo actualizar el estado.', variant: 'destructive' });
@@ -143,19 +143,19 @@ const UserManagement = () => {
                     <motion.tr key={user.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.05 * index }} className="border-b border-white/10 hover:bg-white/5">
                       <td className="p-4">
                         <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold ${!user.isActive && 'opacity-50'}`}>
+                          <div className={`w-10 h-10 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold ${!user.is_active && 'opacity-50'}`}>
                             {user.name.charAt(0)}
                           </div>
-                          <span className={`text-white font-medium ${!user.isActive && 'text-white/50'}`}>{user.name}</span>
+                          <span className={`text-white font-medium ${!user.is_active && 'text-white/50'}`}>{user.name}</span>
                         </div>
                       </td>
                       <td className="p-4">
-                        <span className={`text-white/80 ${!user.isActive && 'text-white/40'}`}>{user.email || user.phone}</span>
+                        <span className={`text-white/80 ${!user.is_active && 'text-white/40'}`}>{user.email || user.phone}</span>
                       </td>
                       <td className="p-4 text-center">
                         <div className="flex items-center justify-center gap-2">
-                           <Switch id={`status-${user.id}`} checked={user.isActive} onCheckedChange={() => handleToggleStatus(user)} />
-                           <span className={`text-sm font-medium ${user.isActive ? 'text-green-400' : 'text-red-400'}`}>{user.status}</span>
+                           <Switch id={`status-${user.id}`} checked={user.is_active} onCheckedChange={() => handleToggleStatus(user)} />
+                           <span className={`text-sm font-medium ${user.is_active ? 'text-green-400' : 'text-red-400'}`}>{user.status}</span>
                         </div>
                       </td>
                       <td className="p-4 text-right">
